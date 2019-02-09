@@ -51,6 +51,7 @@ public class Robot extends IterativeRobot {
   private double centerX2 = 0.0;	
   private final Object imgLock = new Object();
 
+  
   	//ports
 	final int leftDrivePwmPort = 0;
 	final int rightDrivePwmPort = 1;
