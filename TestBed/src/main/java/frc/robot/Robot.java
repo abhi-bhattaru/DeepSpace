@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.Joystick;
 
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
@@ -43,7 +44,7 @@ public class Robot extends IterativeRobot {
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
-
+  Joystick stick;
   Thread m_visionThread;
 
 
@@ -61,7 +62,7 @@ public class Robot extends IterativeRobot {
   DoubleSolenoid frontLeftLift = new DoubleSolenoid(0, 2, 3); // todo: how to index second PCM node id?
   DoubleSolenoid frontRightLift = new DoubleSolenoid(0, 4, 5);
   
-  Compressor c = new Compressor(0);
+  Compressor compressor = new Compressor(0);
 
 
   /**
@@ -74,13 +75,18 @@ public class Robot extends IterativeRobot {
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
 
-    c.start();
-    c.setClosedLoopControl(true);
+
+    stick = new Joystick(0);
+
+
+    compressor.start();
+    compressor.setClosedLoopControl(true);
 
     rearLift.set(DoubleSolenoid.Value.kReverse);
     frontLeftLift.set(DoubleSolenoid.Value.kReverse);
     frontRightLift.set(DoubleSolenoid.Value.kReverse);
 
+    
   }
   
   public void selenoidTest()
@@ -202,9 +208,24 @@ public class Robot extends IterativeRobot {
    */
   @Override
   public void teleopPeriodic() {
-    frontLeftLift.set(DoubleSolenoid.Value.kForward);
-    rearLift.set(DoubleSolenoid.Value.kForward);
-    frontRightLift.set(DoubleSolenoid.Value.kForward);
+
+    
+    double y = stick.getY();
+
+    if (y < 0)
+    {
+      frontLeftLift.set(DoubleSolenoid.Value.kReverse);
+      rearLift.set(DoubleSolenoid.Value.kReverse);
+      frontRightLift.set(DoubleSolenoid.Value.kReverse);
+    }
+    else if (y > 0)
+    {
+      frontLeftLift.set(DoubleSolenoid.Value.kForward);
+      rearLift.set(DoubleSolenoid.Value.kForward);
+      frontRightLift.set(DoubleSolenoid.Value.kForward);
+
+    }
+      
 
   }
 
