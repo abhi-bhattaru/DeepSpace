@@ -7,30 +7,29 @@
 
 package frc.robot;
 
-import edu.wpi.first.wpilibj.Compressor;
-import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.Victor;
+import edu.wpi.first.wpilibj.Relay.Value;
+import edu.wpi.first.wpilibj.Relay;
+import edu.wpi.first.wpilibj.drive.MecanumDrive;
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.AnalogInput;
+import edu.wpi.first.wpilibj.ADXRS450_Gyro;
+import edu.wpi.first.wpilibj.BuiltInAccelerometer;
+import edu.wpi.first.wpilibj.AnalogAccelerometer;
+import edu.wpi.first.wpilibj.interfaces.Accelerometer;
 
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.core.Rect;
 
 import edu.wpi.cscore.CvSink;
 import edu.wpi.cscore.CvSource;
 import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.cameraserver.CameraServer;
-
-
-import edu.wpi.first.vision.VisionRunner;
-import edu.wpi.first.vision.VisionThread;
-
-import edu.wpi.first.wpilibj.DoubleSolenoid;
-
 /**
  * The VM is configured to automatically run this class, and to call the
  * functions corresponding to each mode, as described in the IterativeRobot
@@ -44,25 +43,37 @@ public class Robot extends IterativeRobot {
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
+  private int kfrontleft = 0;
+  private int kfrontRight = 1;
+  private int krearleft = 2;
+  private int krearRight = 3;
+
+  private int kJoystickPort = 0;
+
+  Victor frontLeft;
+  Victor frontRight;
+  Victor rearLeft;
+  Victor rearRight;
+
+  MecanumDrive chassis;
+
   Joystick stick;
-  Thread m_visionThread;
 
 
-  private static final int IMG_WIDTH = 320;
-	private static final int IMG_HEIGHT = 240;
-	
-	private VisionThread visionThread;
-  private double centerX = 0.0;
-  private double centerX1 = 0.0;
-  private double centerX2 = 0.0;
-	
-  private final Object imgLock = new Object();
+  private static final int kUltrasonicPort1 = 0;
+	private AnalogInput m_ultrasonic1 = new AnalogInput(kUltrasonicPort1);
+  private static final double kValueToInches = 0.049;
 
-  DoubleSolenoid rearLift = new DoubleSolenoid(0, 0, 1);
-  DoubleSolenoid frontLeftLift = new DoubleSolenoid(0, 2, 3); // todo: how to index second PCM node id?
-  DoubleSolenoid frontRightLift = new DoubleSolenoid(0, 4, 5);
+  ADXRS450_Gyro gyro = new ADXRS450_Gyro();
+  Accelerometer accel= new BuiltInAccelerometer(Accelerometer.Range.k4G);
   
-  Compressor compressor = new Compressor(0);
+
+  Relay light;
+  
+	double currentDistance1;
+	double[] accVal = new double[3];
+
+  Thread m_visionThread;
 
 
   /**
@@ -75,79 +86,58 @@ public class Robot extends IterativeRobot {
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
 
+    frontLeft = new Victor(kfrontleft);
+    frontRight = new Victor(kfrontRight);
+    rearLeft = new Victor(krearleft);
+    rearRight = new Victor(krearRight);
 
-    stick = new Joystick(0);
+    frontLeft.setInverted(true);
+    rearRight.setInverted(true);
 
+    chassis = new MecanumDrive(frontLeft, rearLeft, frontRight, rearRight);
 
-    compressor.start();
-    compressor.setClosedLoopControl(true);
+    stick = new Joystick(kJoystickPort);
 
-    rearLift.set(DoubleSolenoid.Value.kReverse);
-    frontLeftLift.set(DoubleSolenoid.Value.kReverse);
-    frontRightLift.set(DoubleSolenoid.Value.kReverse);
+    light = new Relay(0);
+    light.set(Value.kOn);
 
-    
-  }
-  
-  public void selenoidTest()
-  {
-    /**
-   * This code is for operating the pneumatic encoders/cylinders
-   */
+    m_visionThread = new Thread(() -> {
+      // Get the UsbCamera from CameraServer
+      UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
+      // Set the resolution
+      camera.setResolution(240, 180);
 
-   // initialize compressors
-   Compressor c = new Compressor(0);
+      // Get a CvSink. This will capture Mats from the camera
+      CvSink cvSink = CameraServer.getInstance().getVideo();
+      // Setup a CvSource. This will send images back to the Dashboard
+      CvSource outputStream
+          = CameraServer.getInstance().putVideo("Rectangle", 320, 240);
 
-   c.setClosedLoopControl(true);
-   c.setClosedLoopControl(false);
+      // Mats are very memory expensive. Lets reuse this Mat.
+      Mat mat = new Mat();
 
-  // initialize selenoids
-   DoubleSolenoid solenoid1 = new DoubleSolenoid(0, 1, 2);
-   DoubleSolenoid solenoid2 = new DoubleSolenoid(1, 1, 2); // todo: how to index second PCM node id?
-
-  }
-  
-  public void visionTest()
-  {
-    UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
-    camera.setResolution(IMG_WIDTH, IMG_HEIGHT);
-    /*visionThread = new VisionThread(camera, new TapePipeline(), pipeline -> {
-        if (!pipeline.filterContoursOutput().isEmpty()) {
-            Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
-            synchronized (imgLock) {
-                centerX = r.x + (r.width / 2);
-            }
+      // This cannot be 'true'. The program will never exit if it is. This
+      // lets the robot stop this thread when restarting robot code or
+      // deploying.
+      while (!Thread.interrupted()) {
+        // Tell the CvSink to grab a frame from the camera and put it
+        // in the source mat.  If there is an error notify the output.
+        if (cvSink.grabFrame(mat) == 0) {
+          // Send the output the error.
+          outputStream.notifyError(cvSink.getError());
+          // skip the rest of the current iteration
+          continue;
         }
-    });
-    visionThread.start();
-    */
-    visionThread = new VisionThread(camera, new TapePipeline(), pipeline -> {
-      if(pipeline.filterContoursOutput().isEmpty()) {
-        synchronized (imgLock) {
-        centerX = 160;
-        }
+        // Put a rectangle on the image
+        Imgproc.rectangle(mat, new Point(100, 100), new Point(400, 400),
+            new Scalar(255, 255, 255), 5);
+        // Give the output stream a new image to display
+        outputStream.putFrame(mat);
       }
-        if (!pipeline.filterContoursOutput().isEmpty()) {
-            Rect r1 = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
-            if(pipeline.filterContoursOutput().size() >= 2) {
-              Rect r2 = Imgproc.boundingRect(pipeline.filterContoursOutput().get(1));
-              synchronized(imgLock) {
-                centerX1 = r1.x + (r1.width / 2);
-                centerX2 = r2.x + (r2.width/2);
-                centerX = (centerX1 + centerX2)/2;
-              }
-              SmartDashboard.putNumber("centerX", centerX);
-              SmartDashboard.putNumber("centerX1", centerX1);
-              SmartDashboard.putNumber("centerX2", centerX2);
-            } else {
-                synchronized (imgLock) {
-                  centerX = 0;
-                }
-            }
-        }
     });
-    visionThread.start();;
-    
+    m_visionThread.setDaemon(true);
+    m_visionThread.start();
+
   }
 
   /**
@@ -189,12 +179,6 @@ public class Robot extends IterativeRobot {
     switch (m_autoSelected) {
       case kCustomAuto:
         // Put custom auto code here
-        double centerX;
-        synchronized (imgLock) {
-            centerX = this.centerX;
-        }
-        double turn = centerX - (IMG_WIDTH / 2);
-        SmartDashboard.putNumber("turnAmount", turn);
         break;
       case kDefaultAuto:
       default:
@@ -208,25 +192,16 @@ public class Robot extends IterativeRobot {
    */
   @Override
   public void teleopPeriodic() {
+    double x = stick.getX();
+    double y = -stick.getY();
+    double z = stick.getZ();
 
-    
-    double y = stick.getY();
+    getAccel();
+    getHeading();
+    getDistance();
 
-    if (y < 0)
-    {
-      frontLeftLift.set(DoubleSolenoid.Value.kReverse);
-      rearLift.set(DoubleSolenoid.Value.kReverse);
-      frontRightLift.set(DoubleSolenoid.Value.kReverse);
-    }
-    else if (y > 0)
-    {
-      frontLeftLift.set(DoubleSolenoid.Value.kForward);
-      rearLift.set(DoubleSolenoid.Value.kForward);
-      frontRightLift.set(DoubleSolenoid.Value.kForward);
-
-    }
-      
-
+    chassis.driveCartesian(y, x, z);
+    light.set(Value.kForward);
   }
 
   /**
@@ -235,4 +210,28 @@ public class Robot extends IterativeRobot {
   @Override
   public void testPeriodic() {
   }
+
+  	//updates the value of the sonar sensor
+	public void getDistance() {
+		this.currentDistance1 = m_ultrasonic1.getValue()*this.kValueToInches;
+		SmartDashboard.putNumber("distance right", currentDistance1);
+	}
+	
+
+	//updates the value of the gyro
+	public double getHeading() {
+		SmartDashboard.putNumber("gyroAngle", gyro.getAngle());
+		return gyro.getAngle();
+	}
+	
+	//updates the value of the accelerometer Ignore for now
+	public double[] getAccel() {
+		accVal[0] = accel.getX()*9.81;
+		accVal[1] = accel.getY()*9.81;
+		accVal[2] = accel.getZ()*9.81;
+		SmartDashboard.putNumber("x accel", accVal[0]);
+		SmartDashboard.putNumber("y accel", accVal[1]);
+		SmartDashboard.putNumber("z accel", accVal[2]);
+		return accVal;
+	}
 }
