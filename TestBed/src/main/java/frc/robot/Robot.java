@@ -7,6 +7,8 @@
 
 package frc.robot;
 
+import edu.wpi.first.wpilibj.Compressor;
+import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -25,6 +27,8 @@ import edu.wpi.first.cameraserver.CameraServer;
 
 import edu.wpi.first.vision.VisionRunner;
 import edu.wpi.first.vision.VisionThread;
+
+import edu.wpi.first.wpilibj.DoubleSolenoid;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -52,7 +56,13 @@ public class Robot extends IterativeRobot {
   private double centerX2 = 0.0;
 	
   private final Object imgLock = new Object();
+
+  DoubleSolenoid rearLift = new DoubleSolenoid(0, 0, 1);
+  DoubleSolenoid frontLeftLift = new DoubleSolenoid(0, 2, 3); // todo: how to index second PCM node id?
+  DoubleSolenoid frontRightLift = new DoubleSolenoid(0, 4, 5);
   
+  Compressor c = new Compressor(0);
+
 
   /**
    * This function is run when the robot is first started up and should be
@@ -64,9 +74,37 @@ public class Robot extends IterativeRobot {
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
 
+    c.start();
+    c.setClosedLoopControl(true);
+
+    rearLift.set(DoubleSolenoid.Value.kReverse);
+    frontLeftLift.set(DoubleSolenoid.Value.kReverse);
+    frontRightLift.set(DoubleSolenoid.Value.kReverse);
+
+  }
+  
+  public void selenoidTest()
+  {
+    /**
+   * This code is for operating the pneumatic encoders/cylinders
+   */
+
+   // initialize compressors
+   Compressor c = new Compressor(0);
+
+   c.setClosedLoopControl(true);
+   c.setClosedLoopControl(false);
+
+  // initialize selenoids
+   DoubleSolenoid solenoid1 = new DoubleSolenoid(0, 1, 2);
+   DoubleSolenoid solenoid2 = new DoubleSolenoid(1, 1, 2); // todo: how to index second PCM node id?
+
+  }
+  
+  public void visionTest()
+  {
     UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
     camera.setResolution(IMG_WIDTH, IMG_HEIGHT);
-    
     /*visionThread = new VisionThread(camera, new TapePipeline(), pipeline -> {
         if (!pipeline.filterContoursOutput().isEmpty()) {
             Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
@@ -103,8 +141,7 @@ public class Robot extends IterativeRobot {
         }
     });
     visionThread.start();;
-
-
+    
   }
 
   /**
@@ -165,6 +202,10 @@ public class Robot extends IterativeRobot {
    */
   @Override
   public void teleopPeriodic() {
+    frontLeftLift.set(DoubleSolenoid.Value.kForward);
+    rearLift.set(DoubleSolenoid.Value.kForward);
+    frontRightLift.set(DoubleSolenoid.Value.kForward);
+
   }
 
   /**
