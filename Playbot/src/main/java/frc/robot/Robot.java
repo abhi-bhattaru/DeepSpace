@@ -8,28 +8,26 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.IterativeRobot;
+
+import edu.wpi.first.wpilibj.Victor;
+import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj.Victor;
+import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.SpeedControllerGroup;
+import edu.wpi.first.wpilibj.GenericHID.Hand;
+
+import org.opencv.imgproc.Imgproc;
+import org.opencv.core.Rect;
+
 import edu.wpi.first.wpilibj.Relay.Value;
 import edu.wpi.first.wpilibj.Relay;
-import edu.wpi.first.wpilibj.drive.MecanumDrive;
-import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.AnalogInput;
-import edu.wpi.first.wpilibj.ADXRS450_Gyro;
-import edu.wpi.first.wpilibj.BuiltInAccelerometer;
-import edu.wpi.first.wpilibj.AnalogAccelerometer;
-import edu.wpi.first.wpilibj.interfaces.Accelerometer;
 
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
-import org.opencv.imgproc.Imgproc;
-
-import edu.wpi.cscore.CvSink;
-import edu.wpi.cscore.CvSource;
 import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.cameraserver.CameraServer;
+
+import edu.wpi.first.vision.VisionThread;
+
 /**
  * The VM is configured to automatically run this class, and to call the
  * functions corresponding to each mode, as described in the IterativeRobot
@@ -43,39 +41,43 @@ public class Robot extends IterativeRobot {
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
-  private int kfrontleft = 0;
-  private int kfrontRight = 1;
-  private int krearleft = 2;
-  private int krearRight = 3;
+  //Vision
+  Thread m_visionThread;
+  private static final int IMG_WIDTH = 320;
+	private static final int IMG_HEIGHT = 240;	
+	private VisionThread visionThread;
+  private double centerX = 0.0;
+  private double centerX1 = 0.0;
+  private double centerX2 = 0.0;	
+  private final Object imgLock = new Object();
 
-  private int kJoystickPort = 0;
-
-  Victor frontLeft;
-  Victor frontRight;
-  Victor rearLeft;
-  Victor rearRight;
-
-  MecanumDrive chassis;
-
-  Joystick stick;
-
-
-  private static final int kUltrasonicPort1 = 0;
-	private AnalogInput m_ultrasonic1 = new AnalogInput(kUltrasonicPort1);
-  private static final double kValueToInches = 0.049;
-
-  ADXRS450_Gyro gyro = new ADXRS450_Gyro();
-  Accelerometer accel= new BuiltInAccelerometer(Accelerometer.Range.k4G);
   
+  	//ports
+	final int leftDrivePwmPort = 0;
+	final int rightDrivePwmPort = 1;
+	final int intakePortL = 4;
+  final int intakePortR = 5;
+
+	//driveTrain
+	Victor leftMotor = new Victor(leftDrivePwmPort);
+  Victor rightMotor = new Victor(rightDrivePwmPort);
+  DifferentialDrive chassis;
+	JoystickLocations porting = new JoystickLocations();
+	XboxController xbox = new XboxController(porting.joystickPort);
+  DriveTrain dtr;
+
+  Victor intakeLeft = new Victor(intakePortL);
+	Victor intakeRight = new Victor(intakePortR);
+  
+  double intakeSpeed=1.0;
+  double outtakeSpeed=1.0;
+  
+  SpeedControllerGroup intake;
 
   Relay light;
   
-	double currentDistance1;
-	double[] accVal = new double[3];
-
-  Thread m_visionThread;
-
-
+  boolean isDockingMode;
+  final double isOnCenterThresholdInches = .1; //Arbitrary value will need to be calibrated
   /**
    * This function is run when the robot is first started up and should be
    * used for any initialization code.
@@ -85,60 +87,52 @@ public class Robot extends IterativeRobot {
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
+  
+    UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
+    camera.setResolution(IMG_WIDTH, IMG_HEIGHT);
+    
+    rightMotor.setInverted(true);
 
-    frontLeft = new Victor(kfrontleft);
-    frontRight = new Victor(kfrontRight);
-    rearLeft = new Victor(krearleft);
-    rearRight = new Victor(krearRight);
+    chassis = new DifferentialDrive(leftMotor, rightMotor);
+		chassis.setExpiration(.1);
+		chassis.setSafetyEnabled(false);
+    dtr = new DriveTrain(chassis, xbox, porting);
 
-    frontLeft.setInverted(true);
-    rearRight.setInverted(true);
-
-    chassis = new MecanumDrive(frontLeft, rearLeft, frontRight, rearRight);
-
-    stick = new Joystick(kJoystickPort);
+    intakeLeft.setInverted(true);
+		intakeRight.setSafetyEnabled(false);
+    intakeLeft.setSafetyEnabled(false);    
+    intake = new SpeedControllerGroup(intakeLeft, intakeRight);
 
     light = new Relay(0);
     light.set(Value.kOn);
 
-    m_visionThread = new Thread(() -> {
-      // Get the UsbCamera from CameraServer
-      UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
-      // Set the resolution
-      camera.setResolution(240, 180);
-
-      // Get a CvSink. This will capture Mats from the camera
-      CvSink cvSink = CameraServer.getInstance().getVideo();
-      // Setup a CvSource. This will send images back to the Dashboard
-      CvSource outputStream
-          = CameraServer.getInstance().putVideo("Rectangle", 320, 240);
-
-      // Mats are very memory expensive. Lets reuse this Mat.
-      Mat mat = new Mat();
-
-      // This cannot be 'true'. The program will never exit if it is. This
-      // lets the robot stop this thread when restarting robot code or
-      // deploying.
-      while (!Thread.interrupted()) {
-        // Tell the CvSink to grab a frame from the camera and put it
-        // in the source mat.  If there is an error notify the output.
-        if (cvSink.grabFrame(mat) == 0) {
-          // Send the output the error.
-          outputStream.notifyError(cvSink.getError());
-          // skip the rest of the current iteration
-          continue;
+    visionThread = new VisionThread(camera, new TapePipeline(), pipeline -> {              
+      if(pipeline.filterContoursOutput().isEmpty()) {
+        synchronized (imgLock) {
+        centerX = 160;
         }
-        // Put a rectangle on the image
-        Imgproc.rectangle(mat, new Point(100, 100), new Point(400, 400),
-            new Scalar(255, 255, 255), 5);
-        // Give the output stream a new image to display
-        outputStream.putFrame(mat);
       }
+        if (!pipeline.filterContoursOutput().isEmpty()) {
+            Rect r1 = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
+            if(pipeline.filterContoursOutput().size() >= 2) {
+              Rect r2 = Imgproc.boundingRect(pipeline.filterContoursOutput().get(1));
+              synchronized(imgLock) {
+                centerX1 = r1.x + (r1.width / 2);
+                centerX2 = r2.x + (r2.width/2);
+                centerX = (centerX1 + centerX2)/2;
+              }
+              SmartDashboard.putNumber("centerX", centerX);
+              SmartDashboard.putNumber("centerX1", centerX1);
+              SmartDashboard.putNumber("centerX2", centerX2);
+            } else {
+                synchronized (imgLock) {
+                  centerX = 0;
+                }
+            }
+        }
     });
-    m_visionThread.setDaemon(true);
-    m_visionThread.start();
-
-  }
+    visionThread.start();
+  } 
 
   /**
    * This function is called every robot packet, no matter the mode. Use
@@ -192,16 +186,65 @@ public class Robot extends IterativeRobot {
    */
   @Override
   public void teleopPeriodic() {
-    double x = stick.getX();
-    double y = -stick.getY();
-    double z = stick.getZ();
+    dtr.chassis.setSafetyEnabled(true);
+    dtr.changeDrive();
+    dtr.updateAxes();
 
-    getAccel();
-    getHeading();
-    getDistance();
+    if(xbox.getBumper(Hand.kRight))
+    {
+      lineAlignment();
+    }
+    else
+    {
+      manualDriveConditions();
+    }
+  }
 
-    chassis.driveCartesian(y, x, z);
-    light.set(Value.kForward);
+  public void manualDriveConditions(){
+      if(xbox.getRawAxis(porting.lTrigger)>.2) {
+        intake.set(intakeSpeed*-xbox.getTriggerAxis(Hand.kLeft));
+      }else if (xbox.getRawAxis(porting.rTrigger)>.2) {
+        intake.set(outtakeSpeed*xbox.getTriggerAxis(Hand.kRight));
+      }
+      else
+        intake.set(0);
+  }
+
+  public void lineAlignment(){
+    if(xbox.getBumper(Hand.kRight))
+    {
+        if(isDockingMode == false){
+          isDockingMode = true;
+        }
+
+        if(dtr.sonarLeft <= 1 || dtr.sonarRight <= 1)
+        {
+          isDockingMode = false;
+        }
+
+        if(isDockingMode)
+        {
+          chassis.arcadeDrive(0,0);
+        }
+
+        if(Math.abs(dtr.sonarLeft - dtr.sonarRight) < isOnCenterThresholdInches)
+        {
+          chassis.arcadeDrive(.2, 0);
+        }
+        else if (dtr.sonarLeft > dtr.sonarRight)
+        {
+          dtr.turnRight(15);
+          dtr.continueStraight(.2);
+        }
+        else if (dtr.sonarLeft<dtr.sonarRight)
+        {
+          dtr.turnLeft(15);
+          dtr.continueStraight(.2);
+        }
+    }
+    else {
+      isDockingMode = false;
+    }
   }
 
   /**
@@ -210,28 +253,4 @@ public class Robot extends IterativeRobot {
   @Override
   public void testPeriodic() {
   }
-
-  	//updates the value of the sonar sensor
-	public void getDistance() {
-		this.currentDistance1 = m_ultrasonic1.getValue()*this.kValueToInches;
-		SmartDashboard.putNumber("distance right", currentDistance1);
-	}
-	
-
-	//updates the value of the gyro
-	public double getHeading() {
-		SmartDashboard.putNumber("gyroAngle", gyro.getAngle());
-		return gyro.getAngle();
-	}
-	
-	//updates the value of the accelerometer Ignore for now
-	public double[] getAccel() {
-		accVal[0] = accel.getX()*9.81;
-		accVal[1] = accel.getY()*9.81;
-		accVal[2] = accel.getZ()*9.81;
-		SmartDashboard.putNumber("x accel", accVal[0]);
-		SmartDashboard.putNumber("y accel", accVal[1]);
-		SmartDashboard.putNumber("z accel", accVal[2]);
-		return accVal;
-	}
 }

@@ -7,29 +7,26 @@
 
 package frc.robot;
 
-import edu.wpi.first.wpilibj.Compressor;
-import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.IterativeRobot;
+
+import edu.wpi.first.wpilibj.Victor;
+import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.SpeedControllerGroup;
+import edu.wpi.first.wpilibj.GenericHID.Hand;
 
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.core.Rect;
 
-import edu.wpi.cscore.CvSink;
-import edu.wpi.cscore.CvSource;
+import edu.wpi.first.wpilibj.Relay.Value;
+import edu.wpi.first.wpilibj.Relay;
+
 import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.cameraserver.CameraServer;
 
-
-import edu.wpi.first.vision.VisionRunner;
 import edu.wpi.first.vision.VisionThread;
-
-import edu.wpi.first.wpilibj.DoubleSolenoid;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -44,27 +41,42 @@ public class Robot extends IterativeRobot {
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
-  Joystick stick;
+  //Vision
   Thread m_visionThread;
-
-
   private static final int IMG_WIDTH = 320;
-	private static final int IMG_HEIGHT = 240;
-	
+	private static final int IMG_HEIGHT = 240;	
 	private VisionThread visionThread;
   private double centerX = 0.0;
   private double centerX1 = 0.0;
-  private double centerX2 = 0.0;
-	
+  private double centerX2 = 0.0;	
   private final Object imgLock = new Object();
 
-  DoubleSolenoid rearLift = new DoubleSolenoid(0, 0, 1);
-  DoubleSolenoid frontLeftLift = new DoubleSolenoid(0, 2, 3); // todo: how to index second PCM node id?
-  DoubleSolenoid frontRightLift = new DoubleSolenoid(0, 4, 5);
+  	//ports
+	final int leftDrivePwmPort = 0;
+	final int rightDrivePwmPort = 1;
+	final int intakePortL = 4;
+  final int intakePortR = 5;
+
+	//driveTrain
+	Victor leftMotor = new Victor(leftDrivePwmPort);
+  Victor rightMotor = new Victor(rightDrivePwmPort);
+  DifferentialDrive chassis;
+	JoystickLocations porting = new JoystickLocations();
+	XboxController xbox = new XboxController(porting.joystickPort);
+  DriveTrain dtr;
+
+  Victor intakeLeft = new Victor(intakePortL);
+	Victor intakeRight = new Victor(intakePortR);
   
-  Compressor compressor = new Compressor(0);
+  double intakeSpeed=1.0;
+  double outtakeSpeed=1.0;
+  
+  SpeedControllerGroup intake;
 
-
+  Relay light;
+  
+  boolean isDockingMode;
+  final double isOnCenterThresholdInches = .1; //Arbitrary value will need to be calibrated
   /**
    * This function is run when the robot is first started up and should be
    * used for any initialization code.
@@ -74,54 +86,26 @@ public class Robot extends IterativeRobot {
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
-
-
-    stick = new Joystick(0);
-
-
-    compressor.start();
-    compressor.setClosedLoopControl(true);
-
-    rearLift.set(DoubleSolenoid.Value.kReverse);
-    frontLeftLift.set(DoubleSolenoid.Value.kReverse);
-    frontRightLift.set(DoubleSolenoid.Value.kReverse);
-
-    
-  }
   
-  public void selenoidTest()
-  {
-    /**
-   * This code is for operating the pneumatic encoders/cylinders
-   */
-
-   // initialize compressors
-   Compressor c = new Compressor(0);
-
-   c.setClosedLoopControl(true);
-   c.setClosedLoopControl(false);
-
-  // initialize selenoids
-   DoubleSolenoid solenoid1 = new DoubleSolenoid(0, 1, 2);
-   DoubleSolenoid solenoid2 = new DoubleSolenoid(1, 1, 2); // todo: how to index second PCM node id?
-
-  }
-  
-  public void visionTest()
-  {
     UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
     camera.setResolution(IMG_WIDTH, IMG_HEIGHT);
-    /*visionThread = new VisionThread(camera, new TapePipeline(), pipeline -> {
-        if (!pipeline.filterContoursOutput().isEmpty()) {
-            Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
-            synchronized (imgLock) {
-                centerX = r.x + (r.width / 2);
-            }
-        }
-    });
-    visionThread.start();
-    */
-    visionThread = new VisionThread(camera, new TapePipeline(), pipeline -> {
+    
+    rightMotor.setInverted(true);
+
+    chassis = new DifferentialDrive(leftMotor, rightMotor);
+		chassis.setExpiration(.1);
+		chassis.setSafetyEnabled(false);
+    dtr = new DriveTrain(chassis, xbox, porting);
+
+    intakeLeft.setInverted(true);
+		intakeRight.setSafetyEnabled(false);
+    intakeLeft.setSafetyEnabled(false);    
+    intake = new SpeedControllerGroup(intakeLeft, intakeRight);
+
+    light = new Relay(0);
+    light.set(Value.kOn);
+
+    visionThread = new VisionThread(camera, new TapePipeline(), pipeline -> {              
       if(pipeline.filterContoursOutput().isEmpty()) {
         synchronized (imgLock) {
         centerX = 160;
@@ -146,9 +130,8 @@ public class Robot extends IterativeRobot {
             }
         }
     });
-    visionThread.start();;
-    
-  }
+    visionThread.start();
+  } 
 
   /**
    * This function is called every robot packet, no matter the mode. Use
@@ -189,12 +172,6 @@ public class Robot extends IterativeRobot {
     switch (m_autoSelected) {
       case kCustomAuto:
         // Put custom auto code here
-        double centerX;
-        synchronized (imgLock) {
-            centerX = this.centerX;
-        }
-        double turn = centerX - (IMG_WIDTH / 2);
-        SmartDashboard.putNumber("turnAmount", turn);
         break;
       case kDefaultAuto:
       default:
@@ -208,25 +185,65 @@ public class Robot extends IterativeRobot {
    */
   @Override
   public void teleopPeriodic() {
+    dtr.chassis.setSafetyEnabled(true);
+    dtr.changeDrive();
+    dtr.updateAxes();
 
-    
-    double y = stick.getY();
-
-    if (y < 0)
+    if(xbox.getBumper(Hand.kRight))
     {
-      frontLeftLift.set(DoubleSolenoid.Value.kReverse);
-      rearLift.set(DoubleSolenoid.Value.kReverse);
-      frontRightLift.set(DoubleSolenoid.Value.kReverse);
+      lineAlignment();
     }
-    else if (y > 0)
+    else
     {
-      frontLeftLift.set(DoubleSolenoid.Value.kForward);
-      rearLift.set(DoubleSolenoid.Value.kForward);
-      frontRightLift.set(DoubleSolenoid.Value.kForward);
-
+      manualDriveConditions();
     }
-      
+  }
 
+  public void manualDriveConditions(){
+      if(xbox.getRawAxis(porting.lTrigger)>.2) {
+        intake.set(intakeSpeed*-xbox.getTriggerAxis(Hand.kLeft));
+      }else if (xbox.getRawAxis(porting.rTrigger)>.2) {
+        intake.set(outtakeSpeed*xbox.getTriggerAxis(Hand.kRight));
+      }
+      else
+        intake.set(0);
+  }
+
+  public void lineAlignment(){
+    if(xbox.getBumper(Hand.kRight))
+    {
+        if(isDockingMode == false){
+          isDockingMode = true;
+        }
+
+        if(dtr.sonarLeft <= 1 || dtr.sonarRight <= 1)
+        {
+          isDockingMode = false;
+        }
+
+        if(isDockingMode)
+        {
+          chassis.arcadeDrive(0,0);
+        }
+
+        if(Math.abs(dtr.sonarLeft - dtr.sonarRight) < isOnCenterThresholdInches)
+        {
+          chassis.arcadeDrive(.2, 0);
+        }
+        else if (dtr.sonarLeft > dtr.sonarRight)
+        {
+          dtr.turnRight(15);
+          dtr.continueStraight(.2);
+        }
+        else if (dtr.sonarLeft<dtr.sonarRight)
+        {
+          dtr.turnLeft(15);
+          dtr.continueStraight(.2);
+        }
+    }
+    else {
+      isDockingMode = false;
+    }
   }
 
   /**
