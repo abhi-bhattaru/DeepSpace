@@ -7,6 +7,8 @@
 
 package frc.robot;
 
+import java.io.Console;
+import java.util.Scanner;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.IterativeRobot;
@@ -58,11 +60,11 @@ public class Robot extends IterativeRobot {
 	
   private final Object imgLock = new Object();
 
-  DoubleSolenoid rearLift = new DoubleSolenoid(0, 0, 1);
-  DoubleSolenoid frontLeftLift = new DoubleSolenoid(0, 2, 3); // todo: how to index second PCM node id?
-  DoubleSolenoid frontRightLift = new DoubleSolenoid(0, 4, 5);
+  // DoubleSolenoid rearLift = new DoubleSolenoid(0, 0, 1);
+  // DoubleSolenoid frontLeftLift = new DoubleSolenoid(0, 2, 3); // todo: how to index second PCM node id?
+  // DoubleSolenoid frontRightLift = new DoubleSolenoid(0, 4, 5);
   
-  Compressor compressor = new Compressor(0);
+  // Compressor compressor = new Compressor(0);
 
 
   /**
@@ -76,35 +78,34 @@ public class Robot extends IterativeRobot {
     SmartDashboard.putData("Auto choices", m_chooser);
 
 
-    stick = new Joystick(0);
+    solenoidTest(0,0,1);
 
+    visionTest();
+    // compressor.start();
+    // compressor.setClosedLoopControl(true);
 
-    compressor.start();
-    compressor.setClosedLoopControl(true);
-
-    rearLift.set(DoubleSolenoid.Value.kReverse);
-    frontLeftLift.set(DoubleSolenoid.Value.kReverse);
-    frontRightLift.set(DoubleSolenoid.Value.kReverse);
+    // rearLift.set(DoubleSolenoid.Value.kReverse);
+    // frontLeftLift.set(DoubleSolenoid.Value.kReverse);
+    // frontRightLift.set(DoubleSolenoid.Value.kReverse);
 
     
   }
   
-  public void selenoidTest()
+  public void solenoidTest(int pcmModule, int pcmChannelForward, int pcmChannelReverse)
   {
     /**
    * This code is for operating the pneumatic encoders/cylinders
    */
 
    // initialize compressors
-   Compressor c = new Compressor(0);
+   Compressor c = new Compressor(pcmModule);
 
    c.setClosedLoopControl(true);
-   c.setClosedLoopControl(false);
 
   // initialize selenoids
-   DoubleSolenoid solenoid1 = new DoubleSolenoid(0, 1, 2);
-   DoubleSolenoid solenoid2 = new DoubleSolenoid(1, 1, 2); // todo: how to index second PCM node id?
-
+  DoubleSolenoid solenoid1 = new DoubleSolenoid(pcmModule, pcmChannelForward, pcmChannelReverse);
+  solenoid1.set(DoubleSolenoid.Value.kForward);
+  
   }
   
   public void visionTest()
@@ -210,22 +211,24 @@ public class Robot extends IterativeRobot {
   public void teleopPeriodic() {
 
     
-    double y = stick.getY();
+    // Scanner scanner = new Scanner(System.in);
+    // String readString = scanner.nextLine();
+    // scanner.close();
+    // System.out.print(readString);
 
-    if (y < 0)
-    {
-      frontLeftLift.set(DoubleSolenoid.Value.kReverse);
-      rearLift.set(DoubleSolenoid.Value.kReverse);
-      frontRightLift.set(DoubleSolenoid.Value.kReverse);
-    }
-    else if (y > 0)
-    {
-      frontLeftLift.set(DoubleSolenoid.Value.kForward);
-      rearLift.set(DoubleSolenoid.Value.kForward);
-      frontRightLift.set(DoubleSolenoid.Value.kForward);
+    // if (readString == "1")
+    // {
+    //   frontLeftLift.set(DoubleSolenoid.Value.kReverse);
+    //   rearLift.set(DoubleSolenoid.Value.kReverse);
+    //   frontRightLift.set(DoubleSolenoid.Value.kReverse);
+    // }
+    // else if (readString == "0")
+    // {
+    //   frontLeftLift.set(DoubleSolenoid.Value.kForward);
+    //   rearLift.set(DoubleSolenoid.Value.kForward);
+    //   frontRightLift.set(DoubleSolenoid.Value.kForward);
 
-    }
-      
+    // }    
 
   }
 
