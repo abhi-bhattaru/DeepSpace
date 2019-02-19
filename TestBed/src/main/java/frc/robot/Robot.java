@@ -9,12 +9,17 @@ package frc.robot;
 
 import java.io.Console;
 import java.util.Scanner;
+
+import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.Compressor;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PWMTalonSRX;
 
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
@@ -49,6 +54,13 @@ public class Robot extends IterativeRobot {
   Joystick stick;
   Thread m_visionThread;
 
+  Encoder encoder1 = new Encoder(1,2);
+
+  AnalogInput irSensor1 = new AnalogInput(0);
+
+  DigitalInput limitSwitch = new DigitalInput(0);
+
+  //  mPwmTalonSRXMotor1 = new PWMTalonSRX(1);
 
   private static final int IMG_WIDTH = 320;
 	private static final int IMG_HEIGHT = 240;
@@ -78,9 +90,9 @@ public class Robot extends IterativeRobot {
     SmartDashboard.putData("Auto choices", m_chooser);
 
 
-    solenoidTest(0,0,1);
-
+    //solenoidTest(0,0,1);
     visionTest();
+
     // compressor.start();
     // compressor.setClosedLoopControl(true);
 
@@ -151,6 +163,26 @@ public class Robot extends IterativeRobot {
     
   }
 
+  public void RotaryEncoderTest()
+  {
+      SmartDashboard.putNumber("Encoder1", encoder1.getDistance());
+      SmartDashboard.putBoolean("Encoder1Direction", encoder1.getDirection());
+  }
+
+  public void IrSensorTest()
+  {
+      SmartDashboard.putNumber("IrSensor", irSensor1.getVoltage());
+  }
+
+  public void LimitSwitchTest()
+  {
+      SmartDashboard.putBoolean("limitSwitch", limitSwitch.get());
+  }
+  public void PWMTalonSRXMotorTest()
+  {
+    // mPwmTalonSRXMotor1.set(.1);
+  }
+
   /**
    * This function is called every robot packet, no matter the mode. Use
    * this for items like diagnostics that you want ran during disabled,
@@ -210,25 +242,10 @@ public class Robot extends IterativeRobot {
   @Override
   public void teleopPeriodic() {
 
-    
-    // Scanner scanner = new Scanner(System.in);
-    // String readString = scanner.nextLine();
-    // scanner.close();
-    // System.out.print(readString);
-
-    // if (readString == "1")
-    // {
-    //   frontLeftLift.set(DoubleSolenoid.Value.kReverse);
-    //   rearLift.set(DoubleSolenoid.Value.kReverse);
-    //   frontRightLift.set(DoubleSolenoid.Value.kReverse);
-    // }
-    // else if (readString == "0")
-    // {
-    //   frontLeftLift.set(DoubleSolenoid.Value.kForward);
-    //   rearLift.set(DoubleSolenoid.Value.kForward);
-    //   frontRightLift.set(DoubleSolenoid.Value.kForward);
-
-    // }    
+    IrSensorTest();
+    RotaryEncoderTest();
+    // PWMTalonSRXMotorTest();   
+    LimitSwitchTest(); 
 
   }
 
