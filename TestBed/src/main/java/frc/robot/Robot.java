@@ -7,12 +7,19 @@
 
 package frc.robot;
 
+import java.io.Console;
+import java.util.Scanner;
+
+import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.Compressor;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PWMTalonSRX;
 
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
@@ -47,6 +54,13 @@ public class Robot extends IterativeRobot {
   Joystick stick;
   Thread m_visionThread;
 
+  Encoder encoder1 = new Encoder(1,2);
+
+  AnalogInput irSensor1 = new AnalogInput(0);
+
+  DigitalInput limitSwitch = new DigitalInput(0);
+
+  //  mPwmTalonSRXMotor1 = new PWMTalonSRX(1);
 
   private static final int IMG_WIDTH = 320;
 	private static final int IMG_HEIGHT = 240;
@@ -58,11 +72,11 @@ public class Robot extends IterativeRobot {
 	
   private final Object imgLock = new Object();
 
-  DoubleSolenoid rearLift = new DoubleSolenoid(0, 0, 1);
-  DoubleSolenoid frontLeftLift = new DoubleSolenoid(0, 2, 3); // todo: how to index second PCM node id?
-  DoubleSolenoid frontRightLift = new DoubleSolenoid(0, 4, 5);
+  // DoubleSolenoid rearLift = new DoubleSolenoid(0, 0, 1);
+  // DoubleSolenoid frontLeftLift = new DoubleSolenoid(0, 2, 3); // todo: how to index second PCM node id?
+  // DoubleSolenoid frontRightLift = new DoubleSolenoid(0, 4, 5);
   
-  Compressor compressor = new Compressor(0);
+  // Compressor compressor = new Compressor(0);
 
 
   /**
@@ -76,35 +90,34 @@ public class Robot extends IterativeRobot {
     SmartDashboard.putData("Auto choices", m_chooser);
 
 
-    stick = new Joystick(0);
+    //solenoidTest(0,0,1);
+    visionTest();
 
+    // compressor.start();
+    // compressor.setClosedLoopControl(true);
 
-    compressor.start();
-    compressor.setClosedLoopControl(true);
-
-    rearLift.set(DoubleSolenoid.Value.kReverse);
-    frontLeftLift.set(DoubleSolenoid.Value.kReverse);
-    frontRightLift.set(DoubleSolenoid.Value.kReverse);
+    // rearLift.set(DoubleSolenoid.Value.kReverse);
+    // frontLeftLift.set(DoubleSolenoid.Value.kReverse);
+    // frontRightLift.set(DoubleSolenoid.Value.kReverse);
 
     
   }
   
-  public void selenoidTest()
+  public void solenoidTest(int pcmModule, int pcmChannelForward, int pcmChannelReverse)
   {
     /**
    * This code is for operating the pneumatic encoders/cylinders
    */
 
    // initialize compressors
-   Compressor c = new Compressor(0);
+   Compressor c = new Compressor(pcmModule);
 
    c.setClosedLoopControl(true);
-   c.setClosedLoopControl(false);
 
   // initialize selenoids
-   DoubleSolenoid solenoid1 = new DoubleSolenoid(0, 1, 2);
-   DoubleSolenoid solenoid2 = new DoubleSolenoid(1, 1, 2); // todo: how to index second PCM node id?
-
+  DoubleSolenoid solenoid1 = new DoubleSolenoid(pcmModule, pcmChannelForward, pcmChannelReverse);
+  solenoid1.set(DoubleSolenoid.Value.kForward);
+  
   }
   
   public void visionTest()
@@ -148,6 +161,26 @@ public class Robot extends IterativeRobot {
     });
     visionThread.start();;
     
+  }
+
+  public void RotaryEncoderTest()
+  {
+      SmartDashboard.putNumber("Encoder1", encoder1.getDistance());
+      SmartDashboard.putBoolean("Encoder1Direction", encoder1.getDirection());
+  }
+
+  public void IrSensorTest()
+  {
+      SmartDashboard.putNumber("IrSensor", irSensor1.getVoltage());
+  }
+
+  public void LimitSwitchTest()
+  {
+      SmartDashboard.putBoolean("limitSwitch", limitSwitch.get());
+  }
+  public void PWMTalonSRXMotorTest()
+  {
+    // mPwmTalonSRXMotor1.set(.1);
   }
 
   /**
@@ -209,23 +242,10 @@ public class Robot extends IterativeRobot {
   @Override
   public void teleopPeriodic() {
 
-    
-    double y = stick.getY();
-
-    if (y < 0)
-    {
-      frontLeftLift.set(DoubleSolenoid.Value.kReverse);
-      rearLift.set(DoubleSolenoid.Value.kReverse);
-      frontRightLift.set(DoubleSolenoid.Value.kReverse);
-    }
-    else if (y > 0)
-    {
-      frontLeftLift.set(DoubleSolenoid.Value.kForward);
-      rearLift.set(DoubleSolenoid.Value.kForward);
-      frontRightLift.set(DoubleSolenoid.Value.kForward);
-
-    }
-      
+    IrSensorTest();
+    RotaryEncoderTest();
+    // PWMTalonSRXMotorTest();   
+    LimitSwitchTest(); 
 
   }
 
