@@ -28,6 +28,9 @@ import edu.wpi.first.cameraserver.CameraServer;
 
 import edu.wpi.first.vision.VisionThread;
 
+import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.Compressor;
+
 /**
  * The VM is configured to automatically run this class, and to call the
  * functions corresponding to each mode, as described in the IterativeRobot
@@ -77,6 +80,26 @@ public class Robot extends IterativeRobot {
   
   boolean isDockingMode;
   final double isOnCenterThresholdInches = .1; //Arbitrary value will need to be calibrated
+
+  DoubleSolenoid frontLeft;
+  DoubleSolenoid frontRight;
+  DoubleSolenoid rearLeg;
+  int[] forwardLegsPorts = {0,2,4};
+  int[] reverseLegsPorts = {1,3,5};
+
+  DoubleSolenoid Gripper;
+  DoubleSolenoid Roller;
+  DoubleSolenoid Kicker;
+  int[] forwardScoringPorts = {0,2,4};
+  int[] reverseScoringPorts = {1,3,5};
+
+  int legsPCMPort = 0;
+  int scoringPCMPort = 1;
+
+  Compressor c;
+
+  Pistons pistons;
+
   /**
    * This function is run when the robot is first started up and should be
    * used for any initialization code.
@@ -131,6 +154,21 @@ public class Robot extends IterativeRobot {
         }
     });
     visionThread.start();
+
+    frontLeft = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[0], reverseLegsPorts[0] );
+    frontRight = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[1], reverseLegsPorts[1] );
+    rearLeg = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[2], reverseLegsPorts[2] );
+
+    Gripper = new DoubleSolenoid(scoringPCMPort, forwardScoringPorts[0], reverseScoringPorts[0]);
+    Roller = new DoubleSolenoid(scoringPCMPort, forwardScoringPorts[1], reverseScoringPorts[1]);
+    Kicker = new DoubleSolenoid(scoringPCMPort, forwardScoringPorts[2], reverseScoringPorts[2]);
+
+    c = new Compressor(0);
+    
+    pistons = new Pistons(frontLeft, frontRight, rearLeg, Gripper, Roller, Kicker, c);
+    pistons.initPistons();
+
+
   } 
 
   /**
@@ -189,17 +227,30 @@ public class Robot extends IterativeRobot {
     dtr.changeDrive();
     dtr.updateAxes();
 
-    if(xbox.getBumper(Hand.kRight))
+    if(xbox.getYButton()){
+      pistons.dropLegs();
+    }else{
+      pistons.retractLegs();
+    }
+
+    if(xbox.getAButton()){
+      pistons.enableScoring();
+    }else{
+      pistons.disableScoring();
+    }
+
+
+    /*if(xbox.getBumper(Hand.kRight))
     {
       lineAlignment();
     }
     else
     {
       manualDriveConditions();
-    }
+    }*/
   }
 
-  public void manualDriveConditions(){
+  /*public void manualDriveConditions(){
       if(xbox.getRawAxis(porting.lTrigger)>.2) {
         intake.set(intakeSpeed*-xbox.getTriggerAxis(Hand.kLeft));
       }else if (xbox.getRawAxis(porting.rTrigger)>.2) {
@@ -244,7 +295,7 @@ public class Robot extends IterativeRobot {
     else {
       isDockingMode = false;
     }
-  }
+  }*/
 
   /**
    * This function is called periodically during test mode.
