@@ -224,8 +224,7 @@ public class Robot extends IterativeRobot {
   @Override
   public void teleopPeriodic() {
     dtr.chassis.setSafetyEnabled(true);
-    dtr.changeDrive();
-    dtr.updateAxes();
+    dtr.joystickDrive();
 
     if(xbox.getYButton()){
       pistons.dropLegs();

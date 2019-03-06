@@ -48,7 +48,12 @@ public class DriveTrain{
 		chassis=d;
 		xbox=x;
 		porting=p;
-    }
+	}
+	
+	public void joystickDrive(){
+		changeDrive();
+		updateAxes();
+	}
     
     public void updateAxes() {
 		leftY=xbox.getRawAxis(porting.lYAxis);
