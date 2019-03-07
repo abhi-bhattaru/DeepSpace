@@ -50,6 +50,16 @@ public class Pistons{
         rearLeg.set(Value.kForward);
     }
 
+    public void dropFrontLegs(){
+        frontLeft.set(Value.kForward);
+        frontRight.set(Value.kForward);
+    }
+
+    public void retractFrontLegs(){
+        frontLeft.set(Value.kReverse);
+        frontRight.set(Value.kReverse);
+    }
+
     public void retractLegs(){
         frontLeft.set(Value.kReverse);
         frontRight.set(Value.kReverse);
