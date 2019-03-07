@@ -68,9 +68,16 @@ public class Robot extends IterativeRobot {
 	XboxController xbox = new XboxController(porting.joystickPort);
   DriveTrain dtr;
 
+  DigitalInput limitSwitch = new DigitalInput(0);
+
+List<decimal> liftHeights = new List<decimal>();
+
   Victor intakeLeft = new Victor(intakePortL);
 	Victor intakeRight = new Victor(intakePortR);
   
+  int currentHeightSelection = 0;
+  Encoder encoder1 = new Encoder(1,2);
+
   double intakeSpeed=1.0;
   double outtakeSpeed=1.0;
   
@@ -127,6 +134,14 @@ public class Robot extends IterativeRobot {
 
     light = new Relay(0);
     light.set(Value.kOn);
+
+
+      // define static heights
+      liftHeights.add(0.0);
+      liftHeights.add(2.0);
+      liftHeights.add(7.5);
+      liftHeights.add(14.6);
+      liftHeights.add(18.33);
 
     visionThread = new VisionThread(camera, new TapePipeline(), pipeline -> {              
       if(pipeline.filterContoursOutput().isEmpty()) {
@@ -226,6 +241,30 @@ public class Robot extends IterativeRobot {
     dtr.chassis.setSafetyEnabled(true);
     dtr.joystickDrive();
 
+    //read lift height based on button press
+    if(Joystick.getTopPressed())
+    {
+      currentHeightSelection++;
+    }
+    else if (Joystick.getTriggerPressed())
+    {
+      currentHeightSelection--;
+    }
+
+    //Verify the height selection is valid
+    if(currentHeightSelection < 0)
+    {
+      currentHeightSelection = 0;
+    }
+    else if (currentHeightSelection+1 > liftHeights.size())
+    {
+      liftHeights = liftHeights.size();
+    }
+
+    SmartDashboard.putNumber("Lift Height Selection", currentHeightSelection);
+
+    ChangeHeight();
+
     if(xbox.getYButton()){
       pistons.dropLegs();
     }else{
@@ -238,18 +277,49 @@ public class Robot extends IterativeRobot {
       pistons.disableScoring();
     }
 
+    manualDriveConditions();
 
-    /*if(xbox.getBumper(Hand.kRight))
-    {
-      lineAlignment();
-    }
-    else
-    {
-      manualDriveConditions();
-    }*/
+    // if(xbox.getBumper(Hand.kRight))
+    // {
+    //   lineAlignment();
+    // }
+    // else
+    // {
+    //   manualDriveConditions();
+    // }
+
   }
 
-  /*public void manualDriveConditions(){
+  public void ChangeHeight(){
+
+      if (limitSwitch.get()==true)
+      {
+        encoder1.reset();
+        return;
+      }
+      // get current heights
+      decimal targetHeight = liftHeights.get(currentHeightSelection);
+      decimal currentHeight = encoder1.GetDistance(); // todo: read from encoder
+
+      // apply movement
+      decimal heightTolerance = 0.25; 
+      if (currentHeight < targetHeight - heightTolerance)
+      {
+          //todo: move lift up
+      }
+      else if (currentHeight > targetHeight + heightTolerance)
+      {
+          //todo: move lift down
+      }
+      else
+      {
+          currentHeightSelection = -1;
+          return;
+      }
+
+  }
+
+  public void manualDriveConditions(){
       if(xbox.getRawAxis(porting.lTrigger)>.2) {
         intake.set(intakeSpeed*-xbox.getTriggerAxis(Hand.kLeft));
       }else if (xbox.getRawAxis(porting.rTrigger)>.2) {
@@ -294,7 +364,7 @@ public class Robot extends IterativeRobot {
     else {
       isDockingMode = false;
     }
-  }*/
+  }
 
   /**
    * This function is called periodically during test mode.

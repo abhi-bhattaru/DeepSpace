@@ -196,7 +196,7 @@ public class Robot extends IterativeRobot {
     dtr.changeDrive();
     dtr.updateAxes();
 
-    currentHeightSelection = Scanner.getint()
+    currentHeightSelection = 
     if(xbox.getBumper(Hand.kRight))
     {
       lineAlignment();
