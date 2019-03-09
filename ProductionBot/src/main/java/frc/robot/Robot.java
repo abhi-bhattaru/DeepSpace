@@ -18,6 +18,8 @@ import edu.wpi.first.wpilibj.SpeedControllerGroup;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.Servo;
+import edu.wpi.first.wpilibj.Joystick;
 
 import org.opencv.imgproc.Imgproc;
 import org.opencv.core.Rect;
@@ -32,6 +34,7 @@ import edu.wpi.first.vision.VisionThread;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Compressor;
+import java.util.*;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -56,6 +59,11 @@ public class Robot extends IterativeRobot {
   private double centerX2 = 0.0;	
   private final Object imgLock = new Object();
 
+  //servos
+  final int FrontLegRightStopServo = 4;
+  final int FrontLegLeftStopServo = 5;
+  final int RearLegStopServo = 6;
+
   	//ports
 	final int leftDrivePwmPort = 0;
 	final int rightDrivePwmPort = 1;
@@ -67,12 +75,13 @@ public class Robot extends IterativeRobot {
   Victor rightMotor = new Victor(rightDrivePwmPort);
   DifferentialDrive chassis;
 	JoystickLocations porting = new JoystickLocations();
-	XboxController xbox = new XboxController(porting.joystickPort);
+  XboxController xbox = new XboxController(porting.xboxPort);
+  Joystick joystick = new Joystick(porting.joystickPort);
   DriveTrain dtr;
 
   DigitalInput limitSwitch = new DigitalInput(0);
 
-List<decimal> liftHeights = new List<decimal>();
+List<Double> liftHeights = new ArrayList<Double>();
 
   Victor intakeLeft = new Victor(intakePortL);
 	Victor intakeRight = new Victor(intakePortR);
@@ -244,11 +253,11 @@ List<decimal> liftHeights = new List<decimal>();
     dtr.joystickDrive();
 
     //read lift height based on button press
-    if(Joystick.getTopPressed())
+    if(joystick.getTopPressed())
     {
       currentHeightSelection++;
     }
-    else if (Joystick.getTriggerPressed())
+    else if (joystick.getTriggerPressed())
     {
       currentHeightSelection--;
     }
@@ -260,7 +269,7 @@ List<decimal> liftHeights = new List<decimal>();
     }
     else if (currentHeightSelection+1 > liftHeights.size())
     {
-      liftHeights = liftHeights.size();
+      currentHeightSelection = liftHeights.size();
     }
 
     SmartDashboard.putNumber("Lift Height Selection", currentHeightSelection);
@@ -300,11 +309,11 @@ List<decimal> liftHeights = new List<decimal>();
         return;
       }
       // get current heights
-      decimal targetHeight = liftHeights.get(currentHeightSelection);
-      decimal currentHeight = encoder1.getDistance(); // todo: read from encoder
+      double targetHeight = liftHeights.get(currentHeightSelection);
+      double currentHeight = encoder1.getDistance(); // todo: read from encoder
 
       // apply movement
-      decimal heightTolerance = 0.25; 
+      double heightTolerance = 0.25; 
       if (currentHeight < targetHeight - heightTolerance)
       {
           //todo: move lift up

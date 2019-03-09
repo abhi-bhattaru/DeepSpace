@@ -2,8 +2,9 @@ package frc.robot;
 
 public class JoystickLocations
 {
-    final int joystickPort = 0;
+    final int xboxPort = 0;
     final int startButton = 0;
+    final int joystickPort = 1;
 
     final int lXAxis=0;
     final int lYAxis=1;
