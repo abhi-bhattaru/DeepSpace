@@ -16,6 +16,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.SpeedControllerGroup;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
+import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.DigitalInput;
 
 import org.opencv.imgproc.Imgproc;
 import org.opencv.core.Rect;
@@ -299,7 +301,7 @@ List<decimal> liftHeights = new List<decimal>();
       }
       // get current heights
       decimal targetHeight = liftHeights.get(currentHeightSelection);
-      decimal currentHeight = encoder1.GetDistance(); // todo: read from encoder
+      decimal currentHeight = encoder1.getDistance(); // todo: read from encoder
 
       // apply movement
       decimal heightTolerance = 0.25; 
