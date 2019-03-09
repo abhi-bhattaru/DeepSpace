@@ -1,4 +1,4 @@
-package frc.robot;
+/*package frc.robot;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
@@ -77,4 +77,4 @@ public class Pistons{
         Roller.set(Value.kReverse);
         Kicker.set(Value.kReverse);
     }
-}
+}*/

@@ -28,7 +28,7 @@ public class DriveTrain{
 	private AnalogInput m_ultrasonicRight = new AnalogInput(kUltrasonicPortRight);
 	private static final int kUltrasonicPortLeft = 2;
 	private AnalogInput m_ultrasonicLeft = new AnalogInput(kUltrasonicPortLeft);
-	private static final double kValueToInches = 0.049;
+	private static final double kValueToInches = 0.052;
 	
 	ADXRS450_Gyro gyro = new ADXRS450_Gyro();
 	Accelerometer accel= new BuiltInAccelerometer(Accelerometer.Range.k4G);

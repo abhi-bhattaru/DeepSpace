@@ -16,6 +16,11 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.SpeedControllerGroup;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
+import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.Servo;
+import edu.wpi.first.wpilibj.Solenoid;
+import edu.wpi.first.wpilibj.Joystick;
 
 import org.opencv.imgproc.Imgproc;
 import org.opencv.core.Rect;
@@ -30,6 +35,11 @@ import edu.wpi.first.vision.VisionThread;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Compressor;
+
+import java.time.LocalDateTime;
+import java.util.*;
+
+import javax.lang.model.util.ElementScanner6;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -54,6 +64,11 @@ public class Robot extends IterativeRobot {
   private double centerX2 = 0.0;	
   private final Object imgLock = new Object();
 
+  //servos
+  final int FrontLegRightStopServoPort = 4;
+  final int FrontLegLeftStopServoPort = 5;
+  final int RearLegStopServoPort = 6;
+
   	//ports
 	final int leftDrivePwmPort = 0;
 	final int rightDrivePwmPort = 1;
@@ -65,12 +80,21 @@ public class Robot extends IterativeRobot {
   Victor rightMotor = new Victor(rightDrivePwmPort);
   DifferentialDrive chassis;
 	JoystickLocations porting = new JoystickLocations();
-	XboxController xbox = new XboxController(porting.joystickPort);
+  XboxController xbox = new XboxController(porting.xboxPort);
+  Joystick joystick = new Joystick(porting.joystickPort);
   DriveTrain dtr;
+
+  Victor GripperUpDownMotor = new Victor(2);
+  Victor GripperRollerMotor = new Victor(3);
 
   DigitalInput limitSwitch = new DigitalInput(0);
 
-List<decimal> liftHeights = new List<decimal>();
+  Servo FrontLegRightStopServo = new Servo(FrontLegRightStopServoPort);
+  Servo FrontLegLeftStopServo = new Servo(FrontLegLeftStopServoPort);
+  Servo RearLegStopServo = new Servo(RearLegStopServoPort);
+
+
+  List<Double> liftHeights = new ArrayList<Double>();
 
   Victor intakeLeft = new Victor(intakePortL);
 	Victor intakeRight = new Victor(intakePortR);
@@ -83,20 +107,29 @@ List<decimal> liftHeights = new List<decimal>();
   
   SpeedControllerGroup intake;
 
+  boolean rollerEnabled = false;
+
   Relay light;
   
   boolean isDockingMode;
   final double isOnCenterThresholdInches = .1; //Arbitrary value will need to be calibrated
 
+  DoubleSolenoid GripperDoubleSolenoid;
   DoubleSolenoid frontLeft;
   DoubleSolenoid frontRight;
   DoubleSolenoid rearLeg;
+  DoubleSolenoid kickerDoubleSolenoid;
+  Solenoid GripperRollerSolenoid;
   int[] forwardLegsPorts = {0,2,4};
   int[] reverseLegsPorts = {1,3,5};
 
-  DoubleSolenoid Gripper;
-  DoubleSolenoid Roller;
-  DoubleSolenoid Kicker;
+  long kickDelayMS = 200;
+  boolean isKick = false;
+  long kickTimeMS =0;
+
+  //DoubleSolenoid Gripper;
+  //DoubleSolenoid Roller;
+  //DoubleSolenoid Kicker;
   int[] forwardScoringPorts = {0,2,4};
   int[] reverseScoringPorts = {1,3,5};
 
@@ -105,7 +138,7 @@ List<decimal> liftHeights = new List<decimal>();
 
   Compressor c;
 
-  Pistons pistons;
+  //Pistons pistons;
 
   /**
    * This function is run when the robot is first started up and should be
@@ -137,11 +170,11 @@ List<decimal> liftHeights = new List<decimal>();
 
 
       // define static heights
-      liftHeights.add(0.0);
-      liftHeights.add(2.0);
-      liftHeights.add(7.5);
-      liftHeights.add(14.6);
-      liftHeights.add(18.33);
+      liftHeights.add(0.0); //0
+      liftHeights.add(2.0); //1
+      liftHeights.add(7.5); //2 
+      liftHeights.add(14.6); //3
+      liftHeights.add(18.33); //4
 
     visionThread = new VisionThread(camera, new TapePipeline(), pipeline -> {              
       if(pipeline.filterContoursOutput().isEmpty()) {
@@ -168,22 +201,24 @@ List<decimal> liftHeights = new List<decimal>();
             }
         }
     });
-    visionThread.start();
+    //visionThread.start();
 
-    frontLeft = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[0], reverseLegsPorts[0] );
-    frontRight = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[1], reverseLegsPorts[1] );
-    rearLeg = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[2], reverseLegsPorts[2] );
+    //frontLeft = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[0], reverseLegsPorts[0] );
+    //frontRight = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[1], reverseLegsPorts[1] );
+    //rearLeg = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[2], reverseLegsPorts[2] );
 
-    Gripper = new DoubleSolenoid(scoringPCMPort, forwardScoringPorts[0], reverseScoringPorts[0]);
+    /*Gripper = new DoubleSolenoid(scoringPCMPort, forwardScoringPorts[0], reverseScoringPorts[0]);
     Roller = new DoubleSolenoid(scoringPCMPort, forwardScoringPorts[1], reverseScoringPorts[1]);
     Kicker = new DoubleSolenoid(scoringPCMPort, forwardScoringPorts[2], reverseScoringPorts[2]);
 
     c = new Compressor(0);
     
     pistons = new Pistons(frontLeft, frontRight, rearLeg, Gripper, Roller, Kicker, c);
-    pistons.initPistons();
+    pistons.initPistons();*/
 
-
+    GripperDoubleSolenoid = new DoubleSolenoid(0,0,1);
+    GripperRollerSolenoid = new Solenoid(0,2);
+    
   } 
 
   /**
@@ -241,12 +276,51 @@ List<decimal> liftHeights = new List<decimal>();
     dtr.chassis.setSafetyEnabled(true);
     dtr.joystickDrive();
 
+    //gripper
+    if (xbox.getTriggerAxis(Hand.kLeft)> 0)
+    {
+      GripperDoubleSolenoid.set(DoubleSolenoid.Value.kForward); //close
+    }
+    else if ( xbox.getTriggerAxis(Hand.kRight)> 0)
+    {
+      GripperDoubleSolenoid.set(DoubleSolenoid.Value.kReverse); //open
+    }
+    else 
+    {
+      GripperDoubleSolenoid.set(DoubleSolenoid.Value.kOff);
+    }
+    
+    
+    rollerEnabled = xbox.getBumperPressed(Hand.kLeft);
+    if (rollerEnabled == true)
+    {
+      GripperRollerSolenoid.set(true);
+      GripperRollerMotor.set(.1);
+    }
+    
+    if(isKick==false && xbox.getBumperPressed(Hand.kRight))
+    {
+      isKick = true;
+      kickTimeMS = System.currentTimeMillis();
+      GripperDoubleSolenoid.set(DoubleSolenoid.Value.kReverse);
+    }
+    else if (isKick ==true && System.currentTimeMillis()>=(kickTimeMS+kickDelayMS))
+    {
+      kickerDoubleSolenoid.set(DoubleSolenoid.Value.kForward); 
+      isKick = false;
+      kickTimeMS=0;
+    }
+    else
+    {
+      kickerDoubleSolenoid.set(DoubleSolenoid.Value.kReverse);
+    }
+
     //read lift height based on button press
-    if(Joystick.getTopPressed())
+    if(joystick.getTopPressed())
     {
       currentHeightSelection++;
     }
-    else if (Joystick.getTriggerPressed())
+    else if (joystick.getTriggerPressed())
     {
       currentHeightSelection--;
     }
@@ -258,14 +332,14 @@ List<decimal> liftHeights = new List<decimal>();
     }
     else if (currentHeightSelection+1 > liftHeights.size())
     {
-      liftHeights = liftHeights.size();
+      currentHeightSelection = liftHeights.size();
     }
 
     SmartDashboard.putNumber("Lift Height Selection", currentHeightSelection);
 
     ChangeHeight();
 
-    if(xbox.getYButton()){
+    /*if(xbox.getYButton()){
       pistons.dropLegs();
     }else{
       pistons.retractLegs();
@@ -275,7 +349,7 @@ List<decimal> liftHeights = new List<decimal>();
       pistons.enableScoring();
     }else{
       pistons.disableScoring();
-    }
+    }*/
 
     manualDriveConditions();
 
@@ -295,28 +369,28 @@ List<decimal> liftHeights = new List<decimal>();
       if (limitSwitch.get()==true)
       {
         encoder1.reset();
+        currentHeightSelection = 0;
         return;
       }
       // get current heights
-      decimal targetHeight = liftHeights.get(currentHeightSelection);
-      decimal currentHeight = encoder1.GetDistance(); // todo: read from encoder
+      double targetHeight = liftHeights.get(currentHeightSelection);
+      double currentHeight = encoder1.getDistance(); // todo: read from encoder
 
       // apply movement
-      decimal heightTolerance = 0.25; 
+      double heightTolerance = 0.25; 
       if (currentHeight < targetHeight - heightTolerance)
       {
-          //todo: move lift up
+        GripperUpDownMotor.set(.1);
       }
       else if (currentHeight > targetHeight + heightTolerance)
       {
-          //todo: move lift down
-      }
-      else
-      {
-          currentHeightSelection = -1;
-          return;
+        GripperUpDownMotor.set(-.1);
       }
 
+  }
+
+  public void Habitat(){
+    
   }
 
   public void manualDriveConditions(){
@@ -371,5 +445,7 @@ List<decimal> liftHeights = new List<decimal>();
    */
   @Override
   public void testPeriodic() {
+
+
   }
 }
