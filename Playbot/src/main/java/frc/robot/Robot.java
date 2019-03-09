@@ -55,12 +55,15 @@ public class Robot extends IterativeRobot {
   	//ports
 	final int leftDrivePwmPort = 0;
 	final int rightDrivePwmPort = 1;
+  final int gripperUpDownPwmPort = 2;
 	final int intakePortL = 4;
   final int intakePortR = 5;
 
 	//driveTrain
 	Victor leftMotor = new Victor(leftDrivePwmPort);
   Victor rightMotor = new Victor(rightDrivePwmPort);
+  Victor gripperUpDownMotor = new Victor(gripperUpDownPwmPort);
+
   DifferentialDrive chassis;
 	JoystickLocations porting = new JoystickLocations();
 	XboxController xbox = new XboxController(porting.joystickPort);
@@ -69,6 +72,9 @@ public class Robot extends IterativeRobot {
   Victor intakeLeft = new Victor(intakePortL);
 	Victor intakeRight = new Victor(intakePortR);
   
+  int currentHeightSelection;
+  Encoder encoder1 = new Encoder(1,2);
+
   double intakeSpeed=1.0;
   double outtakeSpeed=1.0;
   
@@ -190,6 +196,7 @@ public class Robot extends IterativeRobot {
     dtr.changeDrive();
     dtr.updateAxes();
 
+    currentHeightSelection = 
     if(xbox.getBumper(Hand.kRight))
     {
       lineAlignment();
@@ -198,6 +205,52 @@ public class Robot extends IterativeRobot {
     {
       manualDriveConditions();
     }
+
+    ChangeHeight();
+  }
+
+  public void ChangeHeight(){
+
+      if (currentHeightSelection == -1)
+      {
+        return;
+      }
+      else if (currentHeightSelection == 0)
+      {
+        //todo: go down
+        //todo: read limit switch if pressed set currentHeightSelection = 0 and rotaryencoder = 0
+        currentHeightSelection = 0;
+        encoder1.reset();
+      }
+      HashMap<int, decimal> liftHeights = new HashMap<int, decimal>();
+
+      // define static heights
+      liftHeights.put(1, 2.0);
+      liftHeights.put(2, 7.5);
+      liftHeights.put(3, 14.6);
+      liftHeights.put(4, 18.33);
+
+
+      // get current heights
+      decimal targetHeight = liftHeights.get(currentHeightSelection);
+      decimal currentHeight = encoder1.GetDistance(); // todo: read from encoder
+
+      // apply movement
+      decimal heightTolerance = 0.25; 
+      if (currentHeight < targetHeight - heightTolerance)
+      {
+          //todo: move lift up
+      }
+      else if (currentHeight > targetHeight + heightTolerance)
+      {
+          //todo: move lift down
+      }
+      else
+      {
+          currentHeightSelection = -1;
+          return;
+      }
+
   }
 
   public void manualDriveConditions(){
