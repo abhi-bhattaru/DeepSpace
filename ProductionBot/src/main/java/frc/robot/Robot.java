@@ -21,7 +21,7 @@ import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.Servo;
 import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.Joystick;
-
+import edu.wpi.first.wpilibj.Timer;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.core.Rect;
 
@@ -64,11 +64,6 @@ public class Robot extends IterativeRobot {
   private double centerX2 = 0.0;	
   private final Object imgLock = new Object();
 
-  //servos
-  final int FrontLegRightStopServoPort = 4;
-  final int FrontLegLeftStopServoPort = 5;
-  final int RearLegStopServoPort = 6;
-
   	//ports
 	final int leftDrivePwmPort = 0;
 	final int rightDrivePwmPort = 1;
@@ -88,11 +83,6 @@ public class Robot extends IterativeRobot {
   Victor GripperRollerMotor = new Victor(3);
 
   DigitalInput limitSwitch = new DigitalInput(0);
-
-  Servo FrontLegRightStopServo = new Servo(FrontLegRightStopServoPort);
-  Servo FrontLegLeftStopServo = new Servo(FrontLegLeftStopServoPort);
-  Servo RearLegStopServo = new Servo(RearLegStopServoPort);
-
 
   List<Double> liftHeights = new ArrayList<Double>();
 
@@ -170,11 +160,14 @@ public class Robot extends IterativeRobot {
 
 
       // define static heights
-      liftHeights.add(0.0); //0
-      liftHeights.add(2.0); //1
-      liftHeights.add(7.5); //2 
-      liftHeights.add(14.6); //3
-      liftHeights.add(18.33); //4
+      liftHeights.add(19.0); //0 rocket bottom hatch, cargo hatch
+      liftHeights.add(27.5); //1 rocket bottom port
+      liftHeights.add(47.0); //2 middle hatch
+      liftHeights.add(55.5); //3 middle port
+      liftHeights.add(75.0); //4 top hatch
+      liftHeights.add(83.5); //5 top port
+      liftHeights.add(32.0); //6 cargo port
+      
 
     visionThread = new VisionThread(camera, new TapePipeline(), pipeline -> {              
       if(pipeline.filterContoursOutput().isEmpty()) {
@@ -275,6 +268,12 @@ public class Robot extends IterativeRobot {
   public void teleopPeriodic() {
     dtr.chassis.setSafetyEnabled(true);
     dtr.joystickDrive();
+
+    //endgame
+    if(xbox.getBButton())
+    {
+      Habitat();
+    }
 
     //gripper
     if (xbox.getTriggerAxis(Hand.kLeft)> 0)
@@ -388,9 +387,38 @@ public class Robot extends IterativeRobot {
       }
 
   }
-
+ int mode =1;
   public void Habitat(){
-    
+    switch(mode){
+      case 1:
+      rearLeg.set(DoubleSolenoid.Value.kForward);
+      mode++;
+      break;
+      case 2:
+      Timer.delay(2.5);
+			dtr.chassis.arcadeDrive(0, 0);
+			mode++;
+      break;
+      case 3:
+      dtr.chassis.arcadeDrive(.6, 0);
+      mode++;
+      break;
+      case 4:
+      Timer.delay(2.5);
+			dtr.chassis.arcadeDrive(0, 0);
+			mode++;
+      break;
+      case 5:
+      rearLeg.set(DoubleSolenoid.Value.kReverse);
+      mode++;
+      break;
+      case 6:
+      Timer.delay(2.5);
+			dtr.chassis.arcadeDrive(0, 0);
+			mode++;
+			break;
+
+    }
   }
 
   public void manualDriveConditions(){
@@ -403,7 +431,7 @@ public class Robot extends IterativeRobot {
         intake.set(0);
   }
 
-  public void lineAlignment(){
+ /* public void lineAlignment(){
     if(xbox.getBumper(Hand.kRight))
     {
         if(isDockingMode == false){
@@ -438,7 +466,7 @@ public class Robot extends IterativeRobot {
     else {
       isDockingMode = false;
     }
-  }
+  }*/
 
   /**
    * This function is called periodically during test mode.
