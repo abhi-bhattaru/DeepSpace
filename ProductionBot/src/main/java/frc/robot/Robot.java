@@ -38,6 +38,7 @@ import edu.wpi.first.wpilibj.Compressor;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Function;
 
 import javax.lang.model.util.ElementScanner6;
 
@@ -71,8 +72,8 @@ public class Robot extends IterativeRobot {
   final int intakePortR = 5;
 
 	//driveTrain
-	Victor leftMotor = new Victor(leftDrivePwmPort);
-  Victor rightMotor = new Victor(rightDrivePwmPort);
+	Victor LeftDriveMotor = new Victor(leftDrivePwmPort);
+  Victor RightDriveMotor = new Victor(rightDrivePwmPort);
   DifferentialDrive chassis;
 	JoystickLocations porting = new JoystickLocations();
   XboxController xbox = new XboxController(porting.xboxPort);
@@ -98,6 +99,7 @@ public class Robot extends IterativeRobot {
   SpeedControllerGroup intake;
 
   boolean rollerEnabled = false;
+  boolean isTestMode = false;
 
   Relay light;
   
@@ -125,6 +127,14 @@ public class Robot extends IterativeRobot {
 
   int legsPCMPort = 0;
   int scoringPCMPort = 1;
+  
+  long elapsedTestTimeMs = 2000;
+  long lastExecutionTimeMs = 0;
+  int currentTestIndex = 0;
+  
+  List<Function<Boolean, Boolean>> listTest = new ArrayList<Function<Boolean, Boolean>>();
+
+  boolean isStarted = false;
 
   Compressor c;
 
@@ -143,9 +153,9 @@ public class Robot extends IterativeRobot {
     UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
     camera.setResolution(IMG_WIDTH, IMG_HEIGHT);
     
-    rightMotor.setInverted(true);
+    RightDriveMotor.setInverted(true);
 
-    chassis = new DifferentialDrive(leftMotor, rightMotor);
+    chassis = new DifferentialDrive(LeftDriveMotor, RightDriveMotor);
 		chassis.setExpiration(.1);
 		chassis.setSafetyEnabled(false);
     dtr = new DriveTrain(chassis, xbox, porting);
@@ -158,6 +168,9 @@ public class Robot extends IterativeRobot {
     light = new Relay(0);
     light.set(Value.kOn);
 
+    AddTests();
+
+    lastExecutionTimeMs = System.currentTimeMillis() - elapsedTestTimeMs;
 
       // define static heights
       liftHeights.add(19.0); //0 rocket bottom hatch, cargo hatch
@@ -266,6 +279,21 @@ public class Robot extends IterativeRobot {
    */
   @Override
   public void teleopPeriodic() {
+
+    //First time robot is booted up
+    if(isStarted == false)
+    {        
+      SetDefault();
+      isStarted = true;
+    }
+
+    //check for switching from test mode
+    if(isTestMode==true)
+    {
+      isTestMode = false;
+      SetDefault();
+    }
+
     dtr.chassis.setSafetyEnabled(true);
     dtr.joystickDrive();
 
@@ -293,7 +321,7 @@ public class Robot extends IterativeRobot {
     rollerEnabled = xbox.getBumperPressed(Hand.kLeft);
     if (rollerEnabled == true)
     {
-      GripperRollerSolenoid.set(true);
+      GripperRollerSolenoid.set(false);
       GripperRollerMotor.set(.1);
     }
     
@@ -363,6 +391,17 @@ public class Robot extends IterativeRobot {
 
   }
 
+  public void SetDefault()
+  {
+    GripperRollerSolenoid.set(true);
+    LeftDriveMotor.set(0);
+    RightDriveMotor.set(0);
+    GripperUpDownMotor.set(0);
+    GripperRollerMotor.set(0);
+    GripperDoubleSolenoid.set(DoubleSolenoid.Value.kOff);
+    kickerDoubleSolenoid.set(DoubleSolenoid.Value.kReverse);
+  }
+  
   public void ChangeHeight(){
 
       if (limitSwitch.get()==true)
@@ -421,6 +460,54 @@ public class Robot extends IterativeRobot {
     }
   }
 
+  public void AddTests()
+  {    
+    listTest.add((a) ->
+    {
+      SmartDashboard.putString("Diagnostic Test", "AllSolenoidsForwardUntoDawn");
+      GripperDoubleSolenoid.set(DoubleSolenoid.Value.kForward);
+      kickerDoubleSolenoid.set(DoubleSolenoid.Value.kForward);
+      GripperRollerSolenoid.set(true);
+      return true;
+    });
+
+    listTest.add((a) ->
+    {
+      SmartDashboard.putString("Diagnostic Test", "AllSolenoidsReverse");
+      GripperDoubleSolenoid.set(DoubleSolenoid.Value.kReverse);
+      kickerDoubleSolenoid.set(DoubleSolenoid.Value.kReverse);
+      GripperRollerSolenoid.set(false);
+      return true;
+    });
+
+    listTest.add((a) ->
+    {
+      SmartDashboard.putString("Diagnostic Test", "MotorsForward");
+      LeftDriveMotor.set(.1);
+      RightDriveMotor.set(-.1);
+      GripperUpDownMotor.set(.1);
+      GripperRollerMotor.set(.1);
+      return true;
+    });
+
+    listTest.add((a) ->
+    {
+      SmartDashboard.putString("Diagnostic Test", "MotorsReverse");
+      LeftDriveMotor.set(-.1);
+      RightDriveMotor.set(.1);
+      GripperUpDownMotor.set(-.1);
+      GripperRollerMotor.set(-.1);
+      return true;
+    });
+
+    listTest.add((a) ->
+    {
+      SmartDashboard.putString("Diagnostic Test", "ResetDevices");
+      SetDefault();
+      return true;
+    });
+  }
+
   public void manualDriveConditions(){
       if(xbox.getRawAxis(porting.lTrigger)>.2) {
         intake.set(intakeSpeed*-xbox.getTriggerAxis(Hand.kLeft));
@@ -473,6 +560,25 @@ public class Robot extends IterativeRobot {
    */
   @Override
   public void testPeriodic() {
+
+      if(isTestMode == false){
+        currentTestIndex = 0;
+        isTestMode = true;
+      } 
+
+      if(System.currentTimeMillis() >= elapsedTestTimeMs + lastExecutionTimeMs)
+      {
+        listTest.get(currentTestIndex).apply(true);
+        lastExecutionTimeMs = System.currentTimeMillis();
+        currentTestIndex++;
+        if(currentTestIndex >= listTest.size())
+        {
+          currentTestIndex = 0;
+          SmartDashboard.putString("Diagnostic Test", "El Fin!");
+        }
+      }
+
+
 
 
   }

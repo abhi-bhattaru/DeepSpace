@@ -14,12 +14,15 @@ import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.Victor;
+import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.PWMTalonSRX;
+import edu.wpi.first.wpilibj.GenericHID.Hand;
 
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
@@ -56,6 +59,10 @@ public class Robot extends IterativeRobot {
 
   Encoder encoder1 = new Encoder(1,2);
 
+  Victor testMotor = new Victor(0);
+
+  XboxController xbox = new XboxController(0);
+
   AnalogInput irSensor1 = new AnalogInput(0);
 
   DigitalInput limitSwitch = new DigitalInput(0);
@@ -91,7 +98,7 @@ public class Robot extends IterativeRobot {
 
 
     //solenoidTest(0,0,1);
-    visionTest();
+    // visionTest();
 
     // compressor.start();
     // compressor.setClosedLoopControl(true);
@@ -183,6 +190,11 @@ public class Robot extends IterativeRobot {
     // mPwmTalonSRXMotor1.set(.1);
   }
 
+  public void MotorTest()
+  {
+    testMotor.set(.5);
+  }
+
   /**
    * This function is called every robot packet, no matter the mode. Use
    * this for items like diagnostics that you want ran during disabled,
@@ -241,7 +253,11 @@ public class Robot extends IterativeRobot {
    */
   @Override
   public void teleopPeriodic() {
-
+    if(xbox.getTriggerAxis(Hand.kLeft)> 0)
+    {
+      MotorTest();
+    }
+    SmartDashboard.putNumber("TriggerValue", xbox.getTriggerAxis(Hand.kLeft));
     IrSensorTest();
     RotaryEncoderTest();
     // PWMTalonSRXMotorTest();   
