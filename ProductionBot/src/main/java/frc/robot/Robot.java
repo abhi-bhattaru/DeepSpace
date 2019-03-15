@@ -294,7 +294,45 @@ public class Robot extends IterativeRobot {
    * This function is called periodically during operator control.
    */
   @Override
-  public void teleopPeriodic() {
+  public void teleopPeriodic(){
+    dtr.chassis.setSafetyEnabled(true);
+    dtr.joystickDrive();
+
+    if (xbox.getYButtonPressed())
+    {
+      rearLeg.set(DoubleSolenoid.Value.kForward);
+    }else{
+      rearLeg.set(DoubleSolenoid.Value.kReverse);
+    }
+
+    //gripper
+    if (xbox.getXButton())
+    {
+      GripperDoubleSolenoid.set(DoubleSolenoid.Value.kForward); //close
+    }
+    else
+    {
+      GripperDoubleSolenoid.set(DoubleSolenoid.Value.kReverse); //open
+    }
+
+    rollerEnabled = xbox.getBumperPressed(Hand.kLeft);
+    if (rollerEnabled == true)
+    {
+      GripperRollerSolenoid.set(false);
+      GripperRollerMotor.set(.1);
+    }
+
+    if(xbox.getBumperPressed(Hand.kRight))
+    {
+      GripperDoubleSolenoid.set(DoubleSolenoid.Value.kForward);
+    }else{
+      GripperDoubleSolenoid.set(DoubleSolenoid.Value.kReverse);
+    }
+
+    Timer.delay(.001);
+  }
+
+  public void teleopPeriodicOld() {
 
     //First time robot is booted up
     //if(isStarted == false)
