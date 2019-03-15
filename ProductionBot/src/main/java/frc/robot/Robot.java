@@ -119,9 +119,6 @@ public class Robot extends IterativeRobot {
   boolean isKick = false;
   long kickTimeMS =0;
 
-  //DoubleSolenoid Gripper;
-  //DoubleSolenoid Roller;
-  //DoubleSolenoid Kicker;
   int[] forwardScoringPorts = {0,2,4};
   int[] reverseScoringPorts = {1,3,5};
 
@@ -137,8 +134,6 @@ public class Robot extends IterativeRobot {
   boolean isStarted = false;
 
   Compressor c;
-
-  //Pistons pistons;
 
   /**
    * This function is run when the robot is first started up and should be
@@ -209,20 +204,9 @@ public class Robot extends IterativeRobot {
     });
     visionThread.start();
 
-    //frontLeft = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[0], reverseLegsPorts[0] );
-    //frontRight = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[1], reverseLegsPorts[1] );
-    //rearLeg = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[2], reverseLegsPorts[2] );
-
-    /*Gripper = new DoubleSolenoid(scoringPCMPort, forwardScoringPorts[0], reverseScoringPorts[0]);
-    Roller = new DoubleSolenoid(scoringPCMPort, forwardScoringPorts[1], reverseScoringPorts[1]);
-    Kicker = new DoubleSolenoid(scoringPCMPort, forwardScoringPorts[2], reverseScoringPorts[2]);
-
-    c = new Compressor(0);
+    GripperDoubleSolenoid = new DoubleSolenoid(0,0,1);
+    GripperRollerSolenoid = new Solenoid(0,2);
     
-    pistons = new Pistons(frontLeft, frontRight, rearLeg, Gripper, Roller, Kicker, c);
-    pistons.initPistons();*/
-
-       
   } 
 
   /**
@@ -415,28 +399,6 @@ public class Robot extends IterativeRobot {
 
     ChangeHeight();*/
 
-    /*if(xbox.getYButton()){
-      pistons.dropLegs();
-    }else{
-      pistons.retractLegs();
-    }
-
-    if(xbox.getAButton()){
-      pistons.enableScoring();
-    }else{
-      pistons.disableScoring();
-    }*/
-
-    //manualDriveConditions();
-
-    // if(xbox.getBumper(Hand.kRight))
-    // {
-    //   lineAlignment();
-    // }
-    // else
-    // {
-    //   manualDriveConditions();
-    // }
         Timer.delay(.002);
   }
 
@@ -557,52 +519,7 @@ public class Robot extends IterativeRobot {
     });
   }
 
-  /*public void manualDriveConditions(){
-      if(xbox.getRawAxis(porting.lTrigger)>.2) {
-        intake.set(intakeSpeed*-xbox.getTriggerAxis(Hand.kLeft));
-      }else if (xbox.getRawAxis(porting.rTrigger)>.2) {
-        intake.set(outtakeSpeed*xbox.getTriggerAxis(Hand.kRight));
-      }
-      else
-        intake.set(0);
-  }*/
 
- /* public void lineAlignment(){
-    if(xbox.getBumper(Hand.kRight))
-    {
-        if(isDockingMode == false){
-          isDockingMode = true;
-        }
-
-        if(dtr.sonarLeft <= 1 || dtr.sonarRight <= 1)
-        {
-          isDockingMode = false;
-        }
-
-        if(isDockingMode)
-        {
-          chassis.arcadeDrive(0,0);
-        }
-
-        if(Math.abs(dtr.sonarLeft - dtr.sonarRight) < isOnCenterThresholdInches)
-        {
-          chassis.arcadeDrive(.2, 0);
-        }
-        else if (dtr.sonarLeft > dtr.sonarRight)
-        {
-          dtr.turnRight(15);
-          dtr.continueStraight(.2);
-        }
-        else if (dtr.sonarLeft<dtr.sonarRight)
-        {
-          dtr.turnLeft(15);
-          dtr.continueStraight(.2);
-        }
-    }
-    else {
-      isDockingMode = false;
-    }
-  }*/
 
   /**
    * This function is called periodically during test mode.
