@@ -331,9 +331,9 @@ public class Robot extends IterativeRobot {
     dtr.joystickDrive();
 
     //endgame
-    /*if(xbox.getYButton())
+    if (xbox.getYButtonPressed())
     {
-      Habitat();
+      rearLeg.set(DoubleSolenoid.Value.kForward);
     }
 
     //gripper
@@ -438,7 +438,7 @@ public class Robot extends IterativeRobot {
 
   }
  int mode =1;
-  public void Habitat(){
+  /*public void Habitat(){
     switch(mode){
       case 1:
       rearLeg.set(DoubleSolenoid.Value.kForward);
@@ -469,7 +469,7 @@ public class Robot extends IterativeRobot {
 			break;
 
     }
-  }
+  }*/
 
   public void AddTests()
   {    
