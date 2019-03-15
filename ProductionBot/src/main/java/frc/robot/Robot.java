@@ -68,8 +68,8 @@ public class Robot extends IterativeRobot {
   	//ports
 	final int leftDrivePwmPort = 0;
 	final int rightDrivePwmPort = 1;
-	final int intakePortL = 4;
-  final int intakePortR = 5;
+	//final int intakePortL = 4;
+  //final int intakePortR = 5;
 
 	//driveTrain
 	Victor LeftDriveMotor = new Victor(leftDrivePwmPort);
@@ -87,16 +87,16 @@ public class Robot extends IterativeRobot {
 
   List<Double> liftHeights = new ArrayList<Double>();
 
-  Victor intakeLeft = new Victor(intakePortL);
-	Victor intakeRight = new Victor(intakePortR);
+  //Victor intakeLeft = new Victor(intakePortL);
+	//Victor intakeRight = new Victor(intakePortR);
   
   int currentHeightSelection = 0;
   Encoder encoder1 = new Encoder(1,2);
 
-  double intakeSpeed=1.0;
-  double outtakeSpeed=1.0;
+  //double intakeSpeed=1.0;
+  //double outtakeSpeed=1.0;
   
-  SpeedControllerGroup intake;
+  //SpeedControllerGroup intake;
 
   boolean rollerEnabled = false;
   boolean isTestMode = false;
@@ -106,14 +106,14 @@ public class Robot extends IterativeRobot {
   boolean isDockingMode;
   final double isOnCenterThresholdInches = .1; //Arbitrary value will need to be calibrated
 
-  DoubleSolenoid GripperDoubleSolenoid;
   DoubleSolenoid frontLeft;
   DoubleSolenoid frontRight;
   DoubleSolenoid rearLeg;
   DoubleSolenoid kickerDoubleSolenoid;
-  Solenoid GripperRollerSolenoid;
   int[] forwardLegsPorts = {0,2,4};
   int[] reverseLegsPorts = {1,3,5};
+  DoubleSolenoid GripperDoubleSolenoid = new DoubleSolenoid(0,0,1);
+  Solenoid GripperRollerSolenoid = new Solenoid(0,2);
 
   long kickDelayMS = 200;
   boolean isKick = false;
@@ -160,15 +160,15 @@ public class Robot extends IterativeRobot {
 		chassis.setSafetyEnabled(false);
     dtr = new DriveTrain(chassis, xbox, porting);
 
-    intakeLeft.setInverted(true);
+    /*intakeLeft.setInverted(true);
 		intakeRight.setSafetyEnabled(false);
     intakeLeft.setSafetyEnabled(false);    
-    intake = new SpeedControllerGroup(intakeLeft, intakeRight);
+    intake = new SpeedControllerGroup(intakeLeft, intakeRight);*/
 
     light = new Relay(0);
     light.set(Value.kOn);
 
-    AddTests();
+    //AddTests();
 
     lastExecutionTimeMs = System.currentTimeMillis() - elapsedTestTimeMs;
 
@@ -207,7 +207,7 @@ public class Robot extends IterativeRobot {
             }
         }
     });
-    //visionThread.start();
+    visionThread.start();
 
     //frontLeft = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[0], reverseLegsPorts[0] );
     //frontRight = new DoubleSolenoid(legsPCMPort, forwardLegsPorts[1], reverseLegsPorts[1] );
@@ -222,9 +222,7 @@ public class Robot extends IterativeRobot {
     pistons = new Pistons(frontLeft, frontRight, rearLeg, Gripper, Roller, Kicker, c);
     pistons.initPistons();*/
 
-    GripperDoubleSolenoid = new DoubleSolenoid(0,0,1);
-    GripperRollerSolenoid = new Solenoid(0,2);
-    
+       
   } 
 
   /**
@@ -250,12 +248,15 @@ public class Robot extends IterativeRobot {
    * the switch structure below with additional strings. If using the
    * SendableChooser make sure to add them to the chooser code above as well.
    */
+  int state = 1;
   @Override
   public void autonomousInit() {
     m_autoSelected = m_chooser.getSelected();
     // autoSelected = SmartDashboard.getString("Auto Selector",
     // defaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
+    dtr.chassis.setSafetyEnabled(true);
+    int state = 1;
   }
 
   /**
@@ -274,41 +275,74 @@ public class Robot extends IterativeRobot {
     }
   }
 
+  public void startLeft(){
+    switch (state){
+      case 1: 
+      dtr.chassis.setSafetyEnabled(false);
+      dtr.chassis.arcadeDrive(.6, 0);
+      state++;
+      break;
+      case 2:
+      Timer.delay(2.5);
+			dtr.chassis.arcadeDrive(0, 0);
+			state++;
+      break;
+      case 3:
+      dtr.chassis.arcadeDrive(.2, -90);
+      break;
+      case 4:
+      Timer.delay(2.5);
+			dtr.chassis.arcadeDrive(0, 0);
+			state++;
+      break;
+      case 5:
+      dtr.chassis.arcadeDrive(.4, 0);
+      break;
+      case 6:
+      Timer.delay(2.5);
+			dtr.chassis.arcadeDrive(0, 0);
+			state++;
+			break;
+    }
+  }
+
   /**
    * This function is called periodically during operator control.
    */
   @Override
   public void teleopPeriodic() {
+    //dtr.DriveArcade();
 
     //First time robot is booted up
-    if(isStarted == false)
-    {        
-      SetDefault();
-      isStarted = true;
-    }
+    //if(isStarted == false)
+    //{        
+     // SetDefault();
+      //sStarted = true;
+    //}
+    
 
     //check for switching from test mode
-    if(isTestMode==true)
+    /*if(isTestMode==true)
     {
       isTestMode = false;
       SetDefault();
-    }
+    }*/
 
     dtr.chassis.setSafetyEnabled(true);
     dtr.joystickDrive();
 
     //endgame
-    if(xbox.getBButton())
+    /*if(xbox.getYButton())
     {
       Habitat();
     }
 
     //gripper
-    if (xbox.getTriggerAxis(Hand.kLeft)> 0)
+    if (xbox.getXButton())
     {
       GripperDoubleSolenoid.set(DoubleSolenoid.Value.kForward); //close
     }
-    else if ( xbox.getTriggerAxis(Hand.kRight)> 0)
+    else if ( xbox.getBButton())
     {
       GripperDoubleSolenoid.set(DoubleSolenoid.Value.kReverse); //open
     }
@@ -343,17 +377,17 @@ public class Robot extends IterativeRobot {
     }
 
     //read lift height based on button press
-    if(joystick.getTopPressed())
+    /*if(joystick.getTopPressed())
     {
       currentHeightSelection++;
     }
     else if (joystick.getTriggerPressed())
     {
       currentHeightSelection--;
-    }
+    }*/
 
     //Verify the height selection is valid
-    if(currentHeightSelection < 0)
+    /*if(currentHeightSelection < 0)
     {
       currentHeightSelection = 0;
     }
@@ -364,7 +398,7 @@ public class Robot extends IterativeRobot {
 
     SmartDashboard.putNumber("Lift Height Selection", currentHeightSelection);
 
-    ChangeHeight();
+    ChangeHeight();*/
 
     /*if(xbox.getYButton()){
       pistons.dropLegs();
@@ -378,7 +412,7 @@ public class Robot extends IterativeRobot {
       pistons.disableScoring();
     }*/
 
-    manualDriveConditions();
+    //manualDriveConditions();
 
     // if(xbox.getBumper(Hand.kRight))
     // {
@@ -391,7 +425,7 @@ public class Robot extends IterativeRobot {
 
   }
 
-  public void SetDefault()
+  /*public void SetDefault()
   {
     GripperRollerSolenoid.set(true);
     LeftDriveMotor.set(0);
@@ -400,7 +434,7 @@ public class Robot extends IterativeRobot {
     GripperRollerMotor.set(0);
     GripperDoubleSolenoid.set(DoubleSolenoid.Value.kOff);
     kickerDoubleSolenoid.set(DoubleSolenoid.Value.kReverse);
-  }
+  }*/
   
   public void ChangeHeight(){
 
@@ -460,7 +494,7 @@ public class Robot extends IterativeRobot {
     }
   }
 
-  public void AddTests()
+  /*public void AddTests()
   {    
     listTest.add((a) ->
     {
@@ -506,9 +540,9 @@ public class Robot extends IterativeRobot {
       SetDefault();
       return true;
     });
-  }
+  }*/
 
-  public void manualDriveConditions(){
+  /*public void manualDriveConditions(){
       if(xbox.getRawAxis(porting.lTrigger)>.2) {
         intake.set(intakeSpeed*-xbox.getTriggerAxis(Hand.kLeft));
       }else if (xbox.getRawAxis(porting.rTrigger)>.2) {
@@ -516,7 +550,7 @@ public class Robot extends IterativeRobot {
       }
       else
         intake.set(0);
-  }
+  }*/
 
  /* public void lineAlignment(){
     if(xbox.getBumper(Hand.kRight))
