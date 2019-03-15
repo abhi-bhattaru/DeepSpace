@@ -388,7 +388,7 @@ public class Robot extends IterativeRobot {
     // {
     //   manualDriveConditions();
     // }
-
+        Timer.delay(.002);
   }
 
   public void SetDefault()
