@@ -168,11 +168,7 @@ public class Robot extends IterativeRobot {
     light = new Relay(0);
     light.set(Value.kOn);
 
-<<<<<<< HEAD
-    //AddTests();
-=======
     AddTests();
->>>>>>> 98efa4043206ec481cd86b0e3d875fde02c53329
 
     lastExecutionTimeMs = System.currentTimeMillis() - elapsedTestTimeMs;
 
@@ -444,11 +440,7 @@ public class Robot extends IterativeRobot {
         Timer.delay(.002);
   }
 
-<<<<<<< HEAD
-  /*public void SetDefault()
-=======
   public void SetDefault()
->>>>>>> 98efa4043206ec481cd86b0e3d875fde02c53329
   {
     GripperRollerSolenoid.set(true);
     LeftDriveMotor.set(0);
@@ -457,11 +449,7 @@ public class Robot extends IterativeRobot {
     GripperRollerMotor.set(0);
     GripperDoubleSolenoid.set(DoubleSolenoid.Value.kOff);
     kickerDoubleSolenoid.set(DoubleSolenoid.Value.kReverse);
-<<<<<<< HEAD
-  }*/
-=======
   }
->>>>>>> 98efa4043206ec481cd86b0e3d875fde02c53329
   
   public void ChangeHeight(){
 
@@ -521,11 +509,7 @@ public class Robot extends IterativeRobot {
     }
   }
 
-<<<<<<< HEAD
-  /*public void AddTests()
-=======
   public void AddTests()
->>>>>>> 98efa4043206ec481cd86b0e3d875fde02c53329
   {    
     listTest.add((a) ->
     {
@@ -571,15 +555,9 @@ public class Robot extends IterativeRobot {
       SetDefault();
       return true;
     });
-<<<<<<< HEAD
-  }*/
-
-  /*public void manualDriveConditions(){
-=======
   }
 
-  public void manualDriveConditions(){
->>>>>>> 98efa4043206ec481cd86b0e3d875fde02c53329
+  /*public void manualDriveConditions(){
       if(xbox.getRawAxis(porting.lTrigger)>.2) {
         intake.set(intakeSpeed*-xbox.getTriggerAxis(Hand.kLeft));
       }else if (xbox.getRawAxis(porting.rTrigger)>.2) {
