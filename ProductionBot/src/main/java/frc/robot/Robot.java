@@ -324,9 +324,9 @@ public class Robot extends IterativeRobot {
 
     if(xbox.getBumperPressed(Hand.kRight))
     {
-      GripperDoubleSolenoid.set(DoubleSolenoid.Value.kForward);
+      kickerDoubleSolenoid.set(DoubleSolenoid.Value.kForward);
     }else{
-      GripperDoubleSolenoid.set(DoubleSolenoid.Value.kReverse);
+      kickerDoubleSolenoid.set(DoubleSolenoid.Value.kReverse);
     }
 
     Timer.delay(.001);
