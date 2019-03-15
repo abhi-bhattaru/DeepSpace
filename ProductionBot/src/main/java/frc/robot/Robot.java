@@ -295,7 +295,6 @@ public class Robot extends IterativeRobot {
    */
   @Override
   public void teleopPeriodic() {
-    //dtr.DriveArcade();
 
     //First time robot is booted up
     //if(isStarted == false)

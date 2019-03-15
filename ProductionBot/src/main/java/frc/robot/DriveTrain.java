@@ -51,7 +51,7 @@ public class DriveTrain{
 	}
 	
 	public void joystickDrive(){
-		//changeDrive();
+		chassis.arcadeDrive(dampen*-xbox.getRawAxis(porting.lYAxis),dampen*xbox.getRawAxis(porting.lXAxis));
 		updateAxes();
 	}
     
